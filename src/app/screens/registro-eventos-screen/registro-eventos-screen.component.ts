@@ -17,7 +17,8 @@ export class EventosScreenComponent implements OnInit, AfterViewInit {
   public token: string = "";
   public lista_eventos: any[] = [];
 
-  displayedColumns: string[] = ['id', 'nombre', 'programa', 'fecha_inicio', 'fecha_fin', 'lugar', 'editar'];
+  // 🔧 Agregamos la columna 'eliminar'
+  displayedColumns: string[] = ['id', 'nombre', 'programa', 'fecha_inicio', 'fecha_fin', 'lugar', 'editar', 'eliminar'];
   dataSource = new MatTableDataSource<any>(this.lista_eventos);
 
   @ViewChild(MatPaginator) paginator: MatPaginator;
@@ -63,20 +64,48 @@ export class EventosScreenComponent implements OnInit, AfterViewInit {
     }, 500);
   }
 
-  public obtenerEventos(): void {
-    this.eventosService.obtenerEventos().subscribe(
-      (response) => {
-        this.lista_eventos = response;
-        this.dataSource = new MatTableDataSource(this.lista_eventos);
-      },
-      (error) => {
-        alert("No se pudo obtener la lista de eventos");
+ public obtenerEventos(): void {
+  this.eventosService.obtenerEventos().subscribe(
+    (response) => {
+      this.lista_eventos = response.map((evento: any) => ({
+        id: evento.id,
+        nombre: evento.titulo,
+        programa: evento.programa_educativo,
+        fecha_inicio: evento.fecha_de_realizacion,
+        fecha_fin: evento.hora_fin,
+        lugar: evento.lugar
+      }));
+
+      this.dataSource.data = this.lista_eventos;
+
+      if (this.paginator && !this.dataSource.paginator) {
+        this.dataSource.paginator = this.paginator;
       }
-    );
-  }
+    },
+    (error) => {
+      alert("No se pudo obtener la lista de eventos");
+    }
+  );
+}
+
 
   public goEditar(idEvento: number): void {
     this.router.navigate(["registro-eventos/" + idEvento]);
   }
 
+  // ✅ Agregamos la función de eliminar
+  public delete(idEvento: number): void {
+    if (confirm('¿Estás seguro de eliminar este evento?')) {
+      this.eventosService.eliminarEvento(idEvento).subscribe({
+        next: () => {
+          // Removemos el evento de la lista
+          this.lista_eventos = this.lista_eventos.filter(evento => evento.id !== idEvento);
+          this.dataSource.data = this.lista_eventos;
+        },
+        error: () => {
+          alert('Error al eliminar el evento');
+        }
+      });
+    }
+  }
 }
